@@ -105,6 +105,5 @@ def npy_to_table(array, filename):
             file.write(f'{point[0]}\t{point[1]}\t{point[2]}\n')
 
 if __name__ == "__main__":
-    table_to_npy('Polarimetry Points.table')
-    # NOTE TO SELF: Coordinates are NOT as intended. Currently X goes from -0.012m to 0.012m instead of -1.2m to 1.2m
-    # REDO OPERA CALCULATIONS AFTER NEW INSTALLATION
+    data = np.load('SG z-adjusted_m.npy')
+    print(data[:3])
