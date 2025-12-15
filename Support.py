@@ -7,7 +7,7 @@ h = hbar * 2 * np.pi
 mp = 1.67262192e-27
 mn = 1.6749275e-27
 muN = (e * hbar) / (2 * mp)
-mu = 1.9103 * muN
+mu = -1.913 * muN
 
 def random_spin_directions(n_spins):
     """
@@ -104,6 +104,37 @@ def npy_to_table(array, filename):
         for point in array:
             file.write(f'{point[0]}\t{point[1]}\t{point[2]}\n')
 
+
+#----------------------------FIELD GENERATOR---------------------------------------------
+def custom_field(B0, # 3-entry list/array of the initial field (Bx, By, Bz)
+                 gradBx, gradBy, gradBz, # ints/floats to determine how much the field changes per step
+                 x0=-1.2, y0=-0.05, z0=-0.18139, # Starting x, y, and y
+                 nx = 441, ny = 21, nz = 21, # Number of points for each "loop"
+                 step = 0.005): # How finely the grid is spaced
+    # Create coordinates for where the field will be created at
+    xs = x0 + step * np.arange(nx)
+    ys = y0 + step * np.arange(ny)
+    zs = z0 + step * np.arange(nz)
+
+    # Make a 3D grid with x-major ordering (x, then y, then z)
+    X, Y, Z = np.meshgrid(xs, ys, zs, indexing="ij")
+    
+    # Create the field
+    Bx = B0[0] + X * gradBx
+    By = B0[1] + Y * gradBy
+    Bz = B0[2] + Z * gradBz
+    B  = np.sqrt(Bx*Bx + By*By + Bz*Bz)
+
+    # Flatten in the order of (x, y, z, Bx, By, Bz, B) as exported from Opera.
+    field = np.column_stack([
+        X.ravel(), Y.ravel(), Z.ravel(),
+        Bx.ravel(), By.ravel(), Bz.ravel(),
+        B.ravel()
+    ])
+    return field
+
+
 if __name__ == "__main__":
-    data = np.load('SG z-adjusted_m.npy')
-    print(data[:3])
+    B0 = [0,0,36.278]
+    field = custom_field(B0, 0, 0, 200)
+    print(field[21*15:21*15+3])
