@@ -6,8 +6,8 @@ from Support import mn # import mass of neutron
 
 
 #------------------------CONTROLS---------------------------------------------------------------
-N = 1000 # Number of neutrons
-spin_orientation = 'random'
+N = 7 # Number of neutrons
+spin_orientation = 'down'
 gravity = False
 x0 = -1.19 # Starting x value for neutrons (m)
 ymin, ymax = -0.03, 0.03 # Starting y value range for neutrons (m)
@@ -15,10 +15,21 @@ zmin, zmax = -0.035, 0.035 # Starting z value range for neutrons (m)
 lambdamin, lambdamax = 2e-10, 25e-10# Wavelength range of neutrons being generated (m)
 mu = Support.mu
 dvspread = True # Set True if you only want the displacement across the decay volume
+xztracking = True
 
-rs = None
+# Set to None if we want this stuff to be generated randomly
+rs = []
 vs = None
-wavelengths = None
+wavelengths = [5e-10]*N
+
+# Custom parameters
+z0s = np.array([-0.03, -0.02, -0.01, 0, 0.01, 0.02, 0.03])
+for dz in z0s:
+    r = [-1.19, 0, dz]
+    rs.append(r)
+rs = np.array(rs)
+wavelengths=np.array(wavelengths)
+
 #-----------------------------------------------------------------------------------------------
 
 if gravity:
@@ -31,11 +42,10 @@ if rs is None:
     # Generate neutrons
     yz = np.random.uniform(low=[ymin, zmin], high=[ymax, zmax], size=(N,2)) # Starting y and z positions for neutrons
     rs = np.column_stack((np.full(N,x0), yz)) # Create position vectors from the same starting x0 and the randomly generated yzs
-    rs[:,2] -= 0.13189 # Offset for beam center being at 13.189cm below z=0
+rs[:,2] -= 0.13189 # Offset for beam center being at 13.189cm below z=0
 
 # Create a copy of starting positions to reference
-if not dvspread:
-    r0s = rs.copy()
+r0s = rs.copy()
 
 if wavelengths is None:
     # Give neutrons velocities based on wavelengths
@@ -68,20 +78,15 @@ if N > 1:
     max_dys = np.zeros(N) # Used to track maximum displacement in y
     max_dzs = np.zeros(N) # Used to track maximum displacement in z
     max_r_perp = np.zeros(N) # sqrt(dy^2 + dz^2)
-elif N == 1:
-    zs = [] # Stores all z-values for individual neutron tracking
-    zs.append(rs[0,2])
+if xztracking:
+    zs = [] # Stores all z-values for neutron tracking
+    zs.append((rs[:,2] - r0s[:,2]).copy())
     xs = []
-    xs.append(rs[0,0])
+    xs.append(rs[:,0].copy())
     ttotals = np.zeros(N)
 while True:
     # Increment counter
     counter += 1
-
-    # If tracking only across decay volume, catch the start of the spectrometer
-    if dvspread:
-        if -0.1 - 1e-4 < rs[0,0] < -0.1 + 1e-4:
-            r0s = rs.copy()
 
     # Find the slice in x corresponding to each neutron
     nearest_idxs = Support.find_nearest_points(rs, field_data)
@@ -104,6 +109,7 @@ while True:
     dBdy = (field_data[nearest_idxs[in_bounds] + 21, 6] - field_data[nearest_idxs[in_bounds] - 21, 6]) / 0.01
     dBdz = (field_data[nearest_idxs[in_bounds] + 1, 6] - field_data[nearest_idxs[in_bounds] - 1, 6]) / 0.01
     gradB = np.stack([dBdx, dBdy, dBdz], axis=1)
+    print(gradB[:,2])
 
     
     # Calculate the force on each neutron
@@ -112,10 +118,6 @@ while True:
     F[in_bounds] = mu*Ftrans.transpose() # Grad(B) is of shape (len(in_bounds),), not N. So we fix shape of spins to match
     F[:,2] += mn*g
     F[~in_bounds] = 0
-
-    if counter == 1:
-        print(f"Initial Force: {F}")
-        print(f"Initial Velocity: {vs}")
   
     # Find the time it takes for the neutrons to get to the next slice in x (5mm in +x-hat direction)
     # Start with "no solution"
@@ -138,7 +140,7 @@ while True:
     t[~in_bounds] = 0
 
     # Update total flight time
-    if N == 1:
+    if xztracking:
         ttotals += t
 
     # Update positions
@@ -147,12 +149,13 @@ while True:
     # Update velocities
     vs += (F/mn) * t[:, None]
 
-    if N == 1: # If we only have 1 neutron, track its path.
-        xs.append(rs[0,0])
-        zs.append(rs[0,2])
+    if xztracking: # If we are tracking neutron paths
+        xs.append(rs[:,0].copy())
+        zs.append((rs[:,2] - r0s[:,2]).copy())
 
     if counter % 20 == 0:
-        print(f"Neutrons have travelled: {counter*0.5}cm")
+        #print(f"Neutrons have travelled: {counter*0.5}cm")
+        pass
 
     if counter % 1 == 0:
         # Check the spread from the starting positions
@@ -161,6 +164,8 @@ while True:
         elif dvspread:
             if 0.1 - 1e-4 < rs[0,0] < 0.1 + 1e-4:
                 diffs = rs - r0s
+                #print(r0s[:5])
+                #print(rs[:5])
             else:
                 continue
         dy = diffs[:,1]
@@ -173,7 +178,7 @@ while True:
         max_r_perp[in_bounds] = np.maximum(max_r_perp[in_bounds], r_perp[in_bounds])
 
     
-
+# Individual neutron tracking
 '''print(f"Final velocity: {vs}")
 xs = np.array(xs)
 zs = np.array(zs)
@@ -184,10 +189,24 @@ plt.xlabel('x (cm)')
 plt.ylabel('z (cm)')
 plt.show()
 sys.exit()'''
+
 # Histogram the max perpendicular displacements
-print(diffs)
+'''print(diffs)
 plt.figure()
 plt.hist(max_r_perp*1e6, bins=50, edgecolor='black')
 plt.xlabel('Maximum Perpendicular Displacement (um)', fontsize=18)
 plt.ylabel('Number of Neutrons', fontsize=18)
+plt.show()'''
+
+# Spread vs z0 plotting
+zs = np.array(zs)
+xs = np.array(xs)
+#print(zs[:, 0])
+#sys.exit()
+plt.figure()
+for i in range(7):
+    plt.plot(xs[:, i]*100, zs[:, i]*1e6, label=f"{z0s[i]}cm from beam center")
+plt.xlabel("x (cm)", fontsize=18)
+plt.ylabel("z (um)", fontsize=18)
+plt.legend()
 plt.show()
