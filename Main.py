@@ -25,7 +25,7 @@ wavelengths = [5e-10]*N
 # Custom parameters
 z0s = np.array([-0.03, -0.02, -0.01, 0, 0.01, 0.02, 0.03])
 for dz in z0s:
-    r = [-1.19, 0, dz]
+    r = [-1.19, -0.01, dz]
     rs.append(r)
 rs = np.array(rs)
 wavelengths=np.array(wavelengths)
@@ -71,7 +71,7 @@ elif spin_orientation == "down":
 #---------------------------LOAD FIELD------------------------------------------------
 # Load field data (N, 7) where the 7 columns are [x, y, z, Bx, By, Bz, B]
 #field_data = Support.custom_field([0,0,36.278], 0, 0, 1) # Custom field for testing
-field_data = np.load('Stern-Gerlach 5mm spacing.npy')
+field_data = np.load('SG z-adjusted_m.npy')
 
 counter = 0
 if N > 1:
@@ -207,6 +207,6 @@ plt.figure()
 for i in range(7):
     plt.plot(xs[:, i]*100, zs[:, i]*1e6, label=f"{z0s[i]}cm from beam center")
 plt.xlabel("x (cm)", fontsize=18)
-plt.ylabel("z (um)", fontsize=18)
+plt.ylabel("dz from starting position (um)", fontsize=18)
 plt.legend()
 plt.show()
