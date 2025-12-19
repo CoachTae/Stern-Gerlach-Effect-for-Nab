@@ -5,7 +5,8 @@ import Support
 from Support import mn # import mass of neutron
 
 dztotals = []
-for dy in np.arange(-0.035, 0.036, 0.01):
+dys = np.arange(-0.035, 0.036, 0.01)
+for dy in dys:
     print(f"Current dy: {dy}")
     #------------------------CONTROLS---------------------------------------------------------------
     N = 7 # Number of neutrons
@@ -94,7 +95,7 @@ for dy in np.arange(-0.035, 0.036, 0.01):
         nearest_idxs = Support.find_nearest_points(rs, field_data)
 
         # Find any indexing issues before next step. If there's an issue, a neutron is going out-of-bounds, so we must ignore it.
-        within_x = (rs[:, 0] < 1) & (rs[:, 0] > -1.2) # +/- 120cm is our x limit
+        within_x = (rs[:, 0] < 0.995) & (rs[:, 0] > -1.2) # +/- 120cm is our x limit
         within_y = abs(rs[:, 1]) < 0.05 # +/- 5cm is our y limit
         within_z = (abs(rs[:, 2]) < 0.18139) & (abs(rs[:,2]) > 0.08139) # +/- 5cm is our z limit from beam-center
         in_bounds = within_x & within_y & within_z
@@ -107,9 +108,13 @@ for dy in np.arange(-0.035, 0.036, 0.01):
         vs[~in_bounds] = 0
 
         # Calculate the gradient of |B|
-        dBdx = (field_data[nearest_idxs[in_bounds] + 441, 4] - field_data[nearest_idxs[in_bounds] - 441, 4]) / 0.01
-        dBdy = (field_data[nearest_idxs[in_bounds] + 21, 5] - field_data[nearest_idxs[in_bounds] - 21, 5]) / 0.01
-        dBdz = (field_data[nearest_idxs[in_bounds] + 1, 6] - field_data[nearest_idxs[in_bounds] - 1, 6]) / 0.01
+        try:
+            dBdx = (field_data[nearest_idxs[in_bounds] + 441, 6] - field_data[nearest_idxs[in_bounds] - 441, 6]) / 0.01
+            dBdy = (field_data[nearest_idxs[in_bounds] + 21, 6] - field_data[nearest_idxs[in_bounds] - 21, 6]) / 0.01
+            dBdz = (field_data[nearest_idxs[in_bounds] + 1, 6] - field_data[nearest_idxs[in_bounds] - 1, 6]) / 0.01
+        except:
+            print(f"Error at {rs[in_bounds,0]}")
+            sys.exit()
         gradB = np.stack([dBdx, dBdy, dBdz], axis=1)
 
         
@@ -220,4 +225,10 @@ for dy in np.arange(-0.035, 0.036, 0.01):
     dztotal = zs[-1, :] - zs[0, :]
     dztotals.append(dztotal)
 dztotals = np.array(dztotals)
-print(dztotals.shape)
+plt.figure()
+for i in range(7):
+    plt.plot(dys*100, dztotals[:, i]*1e6, label=f"{int(z0s[i]*100)}cm from beam center")
+plt.xlabel("Initial y Position (cm)", fontsize=18)
+plt.ylabel("Total dz Displacement (um)", fontsize=18)
+plt.legend()
+plt.show()
