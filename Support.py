@@ -8,11 +8,12 @@ mp = 1.67262192e-27
 mn = 1.6749275e-27
 muN = (e * hbar) / (2 * mp)
 mu = -1.913 * muN
+gamma = 1.83247174e8 # gyromagnetic ratio for neutron (fix this number when I can look it up)
+gammaHz = gamma/(2*np.pi)
 
 def random_spin_directions(n_spins):
     """
     Generate random spin vectors for spin-1/2 particles.
-    Magnitude = h-bar/2, orientation uniformly distributed over the sphere.
 
     returns: Nx3 np array of spin vectors
     """
@@ -64,6 +65,37 @@ def find_nearest_points(rs, field_data):
     nearest_idxs = nearest_in_slice + start_idx # (N,) array of indices. Each value is the index in field_data that corresponds to the nearest point to the i'th neutron
 
     return nearest_idxs
+
+def cross(u, v):
+    """
+    Takes the cross product of all vectors in the 2 arrays. Assumes i'th vector in u is
+    to be crossed with the i'th vector in v.
+    
+    u: array of vectors. Shape (N, 3)
+    v: array of vectors. Shape (N, 3)
+
+    returns: array of resultant vectors from cross products. Shape (N, 3)
+    """
+    crossvects = np.zeros(u.shape)
+    crossvects[:,0] = u[:,1]*v[:,2] - u[:,2]*v[:,1] # uy*vz - uz*vy
+    crossvects[:,1] = u[:,2]*v[:,0] - u[:,0]*v[:,2] # uz*vx - ux*vz
+    crossvects[:,2] = u[:,0]*v[:,1] - u[:,1]*v[:,0] # ux*vy - uy*vx
+
+    return crossvects
+
+def dot(u, v):
+    """
+    Dot product of all vectors in arrays u and v.
+    Assumes we wish to dot the i'th vectors of each array
+
+    u: (N, 3) array of vectors
+    v: (N, 3) array of vectors
+
+    returns: (N,) array of dot products
+    """
+    dotprods = np.zeros(u.shape[0])
+    dotprods = u[:,0]*v[:,0] + u[:,1]*v[:,1] + u[:,2]*v[:,2]
+    return dotprods
 #----------------------------OPERA FUNCTIONS----------------------------------------------------------------------
 def table_to_npy(files):
     '''
