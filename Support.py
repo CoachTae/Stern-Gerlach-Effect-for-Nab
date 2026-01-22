@@ -45,7 +45,7 @@ def get_vs(wavelengths):
     return vs
 
 def find_nearest_points(rs, field_data):
-    start_idx = (int(200*rs[0,0]) + 240) * 21**2 # 21^2 points per slice, the parentheses is the offset such that -1.20 points at index 0, -1.195 to index 21^2, and so on
+    start_idx = (round(200*rs[0,0]) + 240) * 21**2 # 21^2 points per slice, the parentheses is the offset such that -1.20 points at index 0, -1.195 to index 21^2, and so on
     end_idx = start_idx + 21**2 # Original written equation was ((x + 1.2) / 0.005) * 21^2
 
     # Find the nearest point (index) for each neutron
