@@ -172,6 +172,7 @@ for dy in dys:
                     diffs = rs - r0s
                 else:
                     continue
+            dx = diffs[:,0]
             dy = diffs[:,1]
             dz = diffs[:,2]
             r_perp = np.hypot(dy, dz)
