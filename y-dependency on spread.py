@@ -225,11 +225,9 @@ for dy in dys:
     dztotal = zs[-1, :] - zs[0, :]
     dztotals.append(dztotal)
 dztotals = np.array(dztotals)
-print(dztotals.shape)
-sys.exit()
 plt.figure()
 for i in range(7):
-    plt.plot(xs[:, i]*100, dztotals[:, i]*1e6, label=f"{int(z0s[i]*100)}cm from beam center")
+    plt.plot(dys*100, dztotals[:, i]*1e6, label=f"{int(z0s[i]*100)}cm from beam center")
 plt.xlabel("Initial y Position (cm)", fontsize=18)
 plt.ylabel("Total dz Displacement (um)", fontsize=18)
 plt.legend()
