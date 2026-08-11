@@ -6,7 +6,7 @@ from Support import mn # import mass of neutron
 
 
 #------------------------CONTROLS---------------------------------------------------------------
-N = 10000 # Number of neutrons
+N = 100000 # Number of neutrons
 spin_orientation = 'random'
 gravity = False
 x0 = -1.19 # Starting x value for neutrons (m)
@@ -166,12 +166,11 @@ while True:
         dy = diffs[:,1]
         dz = diffs[:,2]
         r_perp = np.hypot(dy, dz)
-    
+
         # Only update for alive neutrons
         max_dys[in_bounds] = np.maximum(max_dys[in_bounds], np.abs(dy[in_bounds]))
         max_dzs[in_bounds] = np.maximum(max_dzs[in_bounds], np.abs(dz[in_bounds]))
         max_r_perp[in_bounds] = np.maximum(max_r_perp[in_bounds], r_perp[in_bounds])
-
 
     
 
@@ -188,7 +187,7 @@ sys.exit()'''
 # Histogram the max perpendicular displacements
 print(diffs)
 plt.figure()
-plt.hist(max_dys*1e6, bins=50, edgecolor='black')
-plt.xlabel('Maximum y Displacement (um)', fontsize=18)
+plt.hist(max_r_perp*1e6, bins=50, edgecolor='black')
+plt.xlabel('Maximum Perpendicular Displacement (um)', fontsize=18)
 plt.ylabel('Number of Neutrons', fontsize=18)
 plt.show()
