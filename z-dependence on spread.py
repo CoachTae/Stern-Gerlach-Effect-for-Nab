@@ -92,7 +92,7 @@ while True:
     nearest_idxs = Support.find_nearest_points(rs, field_data)
 
     # Find any indexing issues before next step. If there's an issue, a neutron is going out-of-bounds, so we must ignore it.
-    within_x = (rs[:, 0] < 1) & (rs[:, 0] > -1.2) # +/- 120cm is our x limit
+    within_x = (rs[:, 0] < 0.995) & (rs[:, 0] > -1.2) # +/- 120cm is our x limit
     within_y = abs(rs[:, 1]) < 0.05 # +/- 5cm is our y limit
     within_z = (abs(rs[:, 2]) < 0.18139) & (abs(rs[:,2]) > 0.08139) # +/- 5cm is our z limit from beam-center
     in_bounds = within_x & within_y & within_z
@@ -105,11 +105,14 @@ while True:
     vs[~in_bounds] = 0
 
     # Calculate the gradient of |B|
-    dBdx = (field_data[nearest_idxs[in_bounds] + 441, 6] - field_data[nearest_idxs[in_bounds] - 441, 6]) / 0.01
-    dBdy = (field_data[nearest_idxs[in_bounds] + 21, 6] - field_data[nearest_idxs[in_bounds] - 21, 6]) / 0.01
-    dBdz = (field_data[nearest_idxs[in_bounds] + 1, 6] - field_data[nearest_idxs[in_bounds] - 1, 6]) / 0.01
+    try:
+        dBdx = (field_data[nearest_idxs[in_bounds] + 441, 6] - field_data[nearest_idxs[in_bounds] - 441, 6]) / 0.01
+        dBdy = (field_data[nearest_idxs[in_bounds] + 21, 6] - field_data[nearest_idxs[in_bounds] - 21, 6]) / 0.01
+        dBdz = (field_data[nearest_idxs[in_bounds] + 1, 6] - field_data[nearest_idxs[in_bounds] - 1, 6]) / 0.01
+    except:
+        print(f"Error at {rs[in_bounds,0]}")
+        sys.exit()
     gradB = np.stack([dBdx, dBdy, dBdz], axis=1)
-    print(gradB[:,2])
 
     
     # Calculate the force on each neutron
