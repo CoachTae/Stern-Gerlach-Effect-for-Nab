@@ -4,11 +4,28 @@ import matplotlib.pyplot as plt
 import Support
 from Support import mn # import mass of neutron
 
+DV_offset = 0.13189 # Offset for beam center being at 13.189cm below z=0
 
+# Collimator dimensions (m)
+C2x = -1.029 # Collimator 2 x-position
+C2h = 0.07 # Collimator 2 height
+C2w = 0.064 # Collimator 2 width
+
+E1x = -0.558 # Entrance collimator x-position
+E1h = 0.07 # Entrance collimator height
+E1w = 0.064 # Entrance collimator width
+
+E2x = -0.372 # Exit collimator x-position
+E2h = 0.07 # Exit collimator height
+E2w = 0.054 # Exit collimator width
+
+E3x = -0.202 # Exit collimator x-position
+E3h = 0.07 # Exit collimator height
+E3w = 0.054 # Exit collimator width
 #------------------------CONTROLS---------------------------------------------------------------
 N = 10000 # Number of neutrons
 spin_orientation = 'random'
-gravity = False
+gravity = True
 x0 = -1.19 # Starting x value for neutrons (m)
 ymin, ymax = -0.03, 0.03 # Starting y value range for neutrons (m)
 zmin, zmax = -0.035, 0.035 # Starting z value range for neutrons (m)
@@ -31,7 +48,7 @@ if rs is None:
     # Generate neutrons
     yz = np.random.uniform(low=[ymin, zmin], high=[ymax, zmax], size=(N,2)) # Starting y and z positions for neutrons
     rs = np.column_stack((np.full(N,x0), yz)) # Create position vectors from the same starting x0 and the randomly generated yzs
-    rs[:,2] -= 0.13189 # Offset for beam center being at 13.189cm below z=0
+    rs[:,2] -= DV_offset # Offset for beam center being at 13.189cm below z=0
 
 # Create a copy of starting positions to reference
 if not dvspread:
@@ -53,7 +70,10 @@ elif spin_orientation == 'up':
     spins = np.ones(N)
 elif spin_orientation == "down":
     spins = -np.ones(N)
+elif spin_orientation.lower() == "nonadiabatic":
+    spins = Support.random_spin_directions(N) # Random spin directions for non-adiabatic case
 
+init_spins = spins.copy() # Store the initial spins for polarization calculations
 
 #---------------------------MANUAL NEUTRON VALUES-------------------------------------
 
@@ -64,6 +84,7 @@ elif spin_orientation == "down":
 field_data = np.load('SG z-adjusted_m.npy')
 
 counter = 0
+neutrons_lost = 0
 if N > 1:
     max_dys = np.zeros(N) # Used to track maximum displacement in y
     max_dzs = np.zeros(N) # Used to track maximum displacement in z
@@ -74,7 +95,13 @@ elif N == 1:
     xs = []
     xs.append(rs[0,0])
     ttotals = np.zeros(N)
+
+#---------------------------MAIN LOOP------------------------------------------------
 while True:
+    # Tracking max values
+    if counter % 10 == 0:
+        print(f"Max y: {np.max(rs[:,1])*100}cm, Max z: {np.max(rs[:,2])*100}cm")
+
     # Increment counter
     counter += 1
 
@@ -86,11 +113,58 @@ while True:
     # Find the slice in x corresponding to each neutron
     nearest_idxs = Support.find_nearest_points(rs, field_data)
 
+    # Check of neutrons are hitting the collimators. If they are, set them out-of-bounds.
+    median_x = np.median(rs[:,0])
+
+    # Check for collimator 2
+    y_check = np.abs(rs[:,1]) - C2w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - C2h/2
+    mask = ((np.abs(median_x - C2x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+             ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100 # Sets positions well out of bounds so they can be caught by future in-bounds checks
+    neutrons_lost += np.sum(mask)
+
+    # Check for entrance collimator 1
+    y_check = np.abs(rs[:,1]) - E1w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - E1h/2
+    mask = ((np.abs(median_x - E1x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+            ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100
+    neutrons_lost += np.sum(mask)
+
+    # Check for entrance collimator 2
+    y_check = np.abs(rs[:,1]) - E2w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - E2h/2
+    mask = ((np.abs(median_x - E2x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+            ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100 
+    neutrons_lost += np.sum(mask)
+
+    # Check for entrance collimator 3
+    y_check = np.abs(rs[:,1]) - E3w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - E3h/2
+    mask = ((np.abs(median_x - E3x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+            ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100 
+    neutrons_lost += np.sum(mask)
+
+
     # Find any indexing issues before next step. If there's an issue, a neutron is going out-of-bounds, so we must ignore it.
     within_x = (rs[:, 0] < 0.995) & (rs[:, 0] > -1.2) # +/- 120cm is our x limit
     within_y = abs(rs[:, 1]) < 0.05 # +/- 5cm is our y limit
     within_z = (abs(rs[:, 2]) < 0.18139) & (abs(rs[:,2]) > 0.08139) # +/- 5cm is our z limit from beam-center
     in_bounds = within_x & within_y & within_z
+
+    # Polarization check for spectrometer
+    if abs(rs[in_bounds][0,0] - -0.1) < 1e-5: # If the neutron is in the spectrometer
+        print(f"Number of neutrons lost: {neutrons_lost}")
+        spin_diffs = init_spins[in_bounds] - spins[in_bounds]
+        print(f"{np.mean(spin_diffs)} +/- {np.std(spin_diffs)/np.sqrt(len(spin_diffs))}")
+        sys.exit()
 
     # Exit condition: if all neutrons are out of bounds, stop the simulation
     if True not in in_bounds:
@@ -166,7 +240,7 @@ while True:
         dy = diffs[:,1]
         dz = diffs[:,2]
         r_perp = np.hypot(dy, dz)
-    
+
         # Only update for alive neutrons
         max_dys[in_bounds] = np.maximum(max_dys[in_bounds], np.abs(dy[in_bounds]))
         max_dzs[in_bounds] = np.maximum(max_dzs[in_bounds], np.abs(dz[in_bounds]))
@@ -185,10 +259,3 @@ plt.xlabel('x (cm)')
 plt.ylabel('z (cm)')
 plt.show()
 sys.exit()'''
-# Histogram the max perpendicular displacements
-print(diffs)
-plt.figure()
-plt.hist(max_dys*1e6, bins=50, edgecolor='black')
-plt.xlabel('Maximum y Displacement (um)', fontsize=18)
-plt.ylabel('Number of Neutrons', fontsize=18)
-plt.show()

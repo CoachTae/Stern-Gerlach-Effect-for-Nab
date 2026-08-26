@@ -4,9 +4,26 @@ import matplotlib.pyplot as plt
 import Support
 from Support import mn # import mass of neutron
 
+DV_offset = 0.13189 # Offset for beam center being at 13.189cm below z=0
 
+# Collimator dimensions (m)
+C2x = -1.029 # Collimator 2 x-position
+C2h = 0.07 # Collimator 2 height
+C2w = 0.064 # Collimator 2 width
+
+E1x = -0.558 # Entrance collimator x-position
+E1h = 0.07 # Entrance collimator height
+E1w = 0.064 # Entrance collimator width
+
+E2x = -0.372 # Exit collimator x-position
+E2h = 0.07 # Exit collimator height
+E2w = 0.054 # Exit collimator width
+
+E3x = -0.202 # Exit collimator x-position
+E3h = 0.07 # Exit collimator height
+E3w = 0.054 # Exit collimator width
 #------------------------CONTROLS---------------------------------------------------------------
-N = 10 # Number of neutrons
+N = 10000 # Number of neutrons
 spin_orientation = 'random'
 gravity = False
 x0 = -1.19 # Starting x value for neutrons (m)
@@ -35,7 +52,7 @@ if rs is None:
     # Generate neutrons
     yz = np.random.uniform(low=[ymin, zmin], high=[ymax, zmax], size=(N,2)) # Starting y and z positions for neutrons
     rs = np.column_stack((np.full(N,x0), yz)) # Create position vectors from the same starting x0 and the randomly generated yzs
-rs[:,2] -= 0.13189 # Offset for beam center being at 13.189cm below z=0
+rs[:,2] -= DV_offset # Offset for beam center being at 13.189cm below z=0
 
 # Create a copy of starting positions to reference
 r0s = rs.copy()
@@ -52,12 +69,16 @@ if vs is None:
 # Give the neutrons a random spin (up or down)
 spins = Support.random_spin_directions(N) # Produces (N, 3) array of random spin vectors
 
+init_spins = spins.copy() # Create a copy of the initial spins to reference
+
+
 #---------------------------LOAD FIELD------------------------------------------------
 # Load field data (N, 7) where the 7 columns are [x, y, z, Bx, By, Bz, B]
 #field_data = Support.custom_field([0,0,36.278], 0, 0, 1) # Custom field for testing
 field_data = np.load('SG z-adjusted_m.npy')
 
 counter = 0
+neutrons_lost = 0
 angles = []
 while True:
     # Increment counter
@@ -66,11 +87,51 @@ while True:
     # Find the slice in x corresponding to each neutron
     nearest_idxs = Support.find_nearest_points(rs, field_data)
 
+    # Check of neutrons are hitting the collimators. If they are, set them out-of-bounds.
+    median_x = np.median(rs[:,0])
+
+    # Check for collimator 2
+    y_check = np.abs(rs[:,1]) - C2w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - C2h/2
+    mask = ((np.abs(median_x - C2x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+             ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100 # Sets positions well out of bounds so they can be caught by future in-bounds checks
+    neutrons_lost += np.sum(mask)
+
+    # Check for entrance collimator 1
+    y_check = np.abs(rs[:,1]) - E1w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - E1h/2
+    mask = ((np.abs(median_x - E1x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+            ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100
+    neutrons_lost += np.sum(mask)
+
+    # Check for entrance collimator 2
+    y_check = np.abs(rs[:,1]) - E2w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - E2h/2
+    mask = ((np.abs(median_x - E2x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+            ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100 
+    neutrons_lost += np.sum(mask)
+
+    # Check for entrance collimator 3
+    y_check = np.abs(rs[:,1]) - E3w/2
+    z_check = np.abs(rs[:,2] + DV_offset) - E3h/2
+    mask = ((np.abs(median_x - E3x) < 5e-3) & 
+            (((y_check >= 0) & (y_check < 20)) | 
+            ((z_check > 0) & (z_check < 20))))
+    rs[mask] = -100 
+    neutrons_lost += np.sum(mask)
+
     # Find any indexing issues before next step. If there's an issue, a neutron is going out-of-bounds, so we must ignore it.
     within_x = (rs[:, 0] < 0.995) & (rs[:, 0] > -1.2) # +/- 120cm is our x limit
     within_y = abs(rs[:, 1]) < 0.05 # +/- 5cm is our y limit
     within_z = (abs(rs[:, 2]) < 0.18139) & (abs(rs[:,2]) > 0.08139) # +/- 5cm is our z limit from beam-center
     in_bounds = within_x & within_y & within_z
+
 
     # Exit condition: if all neutrons are out of bounds, stop the simulation
     if True not in in_bounds:
