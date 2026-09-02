@@ -161,39 +161,44 @@ while True:
     
     # Find the time it takes for the neutrons to get to the next slice in x (5mm in +x-hat direction)
     # Start with "no solution"
-    t = np.full(vs[:,0].shape, np.inf, dtype=float)
+    t = np.full(N, np.inf)
     
-    # Find the neutrons that have basically 0 force in the x-direction. We calculate their time differently to avoid division by 0
-    no_Fx_neutrons = abs(F[:,0]) < 1e-36
+    # Masks for neutrons without an Fx and one for one with an Fx (since we divide by Fx in the time calculation)
+    no_Fx = np.abs(F[:, 0]) < 1e-36
+    has_Fx = ~no_Fx
 
-    # Calculate no-x-force neutron times
-    t[no_Fx_neutrons][in_bounds[no_Fx_neutrons]] = 0.005 / vs[no_Fx_neutrons,0][in_bounds[no_Fx_neutrons]] # First filter for neutrons with no x-force, then filter for in-bounds neutrons
+    # Essentially zero Fx
+    mask = no_Fx & in_bounds
+    t[mask] = 0.005 / vs[mask, 0]
 
-    # Now calculate times for neutrons with a non-zero force
-    t1 = mn * (-vs[:,0] + np.sqrt(vs[:,0]**2 + (2*F[:,0]*0.005/mn))) / F[:,0] # We use [:,0] to only take the x-component of vectors and forces
-    t2 = mn * (-vs[:,0] - np.sqrt(vs[:,0]**2 + (2*F[:,0]*0.005/mn))) / F[:,0]
+    # Nonzero Fx
+    mask = has_Fx & in_bounds
 
-    # Set imaginary times to infinity
-    imag_times1 = np.isnan(t1)
-    imag_times2 = np.isnan(t2)
-    t1[imag_times1] = np.inf
-    t2[imag_times2] = np.inf
+    # Discriminant calculation
+    disc = vs[mask, 0]**2 + 2 * F[mask, 0] * 0.005 / mn 
 
-    # Set negative times to infinity so that we never pick them
-    # First, make a mask of negative times
-    neg_times1 = t1 < 0
-    neg_times2 = t2 < 0
+    # Check that the discriminant is not imaginary
+    valid = disc >= 0 
 
-    # Set negative times to infinity
-    t1[neg_times1] = np.inf
-    t2[neg_times2] = np.inf
+    # Create arrays of the size of the mask
+    t1 = np.full(np.sum(mask), np.inf)
+    t2 = np.full(np.sum(mask), np.inf)
 
-    # Choose the minimum positive time
-    t = np.minimum(t1, t2)
+    # Fill in those arrays with the possible solutions
+    t1[valid] = mn * (
+        -vs[mask, 0][valid] + np.sqrt(disc[valid])
+    ) / F[mask, 0][valid]
 
-    t[~no_Fx_neutrons] = np.minimum(t1[~no_Fx_neutrons], t2[~no_Fx_neutrons])
+    t2[valid] = mn * (
+        -vs[mask, 0][valid] - np.sqrt(disc[valid])
+    ) / F[mask, 0][valid]
 
-    # For time-tracking purposes, turn off time accumulation for out-of-bounds neutrons
+    # Set negative times to infinity so that they are never chosen as the minimum
+    t1[t1 < 0] = np.inf
+    t2[t2 < 0] = np.inf
+
+    t[mask] = np.minimum(t1, t2)
+
     t[~in_bounds] = 0
 
 

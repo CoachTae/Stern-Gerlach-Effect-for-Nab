@@ -23,8 +23,8 @@ E3x = -0.202 # Exit collimator x-position
 E3h = 0.07 # Exit collimator height
 E3w = 0.054 # Exit collimator width
 #------------------------CONTROLS---------------------------------------------------------------
-N = 10000 # Number of neutrons
-spin_orientation = 'random'
+N = 10000000 # Number of neutrons
+spin_orientation = 'nonadiabatic'
 gravity = True
 x0 = -1.19 # Starting x value for neutrons (m)
 ymin, ymax = -0.03, 0.03 # Starting y value range for neutrons (m)
@@ -74,6 +74,10 @@ elif spin_orientation.lower() == "nonadiabatic":
     spins = Support.random_spin_directions(N) # Random spin directions for non-adiabatic case
 
 init_spins = spins.copy() # Store the initial spins for polarization calculations
+init_polarization = np.mean(init_spins, axis=0)
+std = np.std(init_spins, axis=0)
+print(f"Initial Polarization: {init_polarization} +/- {1.96*std/np.sqrt(N)}")
+sys.exit()
 
 #---------------------------MANUAL NEUTRON VALUES-------------------------------------
 

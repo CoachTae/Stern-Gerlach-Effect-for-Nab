@@ -127,22 +127,44 @@ for dy in dys:
     
         # Find the time it takes for the neutrons to get to the next slice in x (5mm in +x-hat direction)
         # Start with "no solution"
-        t = np.full(vs[:,0].shape, np.inf, dtype=float)
+        t = np.full(N, np.inf)
         
-        # Find the neutrons that have basically 0 force in the x-direction. We calculate their time differently to avoid division by 0
-        no_Fx_neutrons = F[:,0] < 1e-36
-
-        # Calculate no-x-force neutron times
-        t[no_Fx_neutrons] = 0.005 / vs[no_Fx_neutrons,0]
-
-        # Now calculate times for neutrons with a non-zero force
-
-        t1 = mn * (-vs[:,0] + np.sqrt(vs[:,0]**2 + (2*F[:,0]*0.005/mn))) / F[:,0] # We use [:,0] to only take the x-component of vectors and forces
-        t2 = mn * (-vs[:,0] - np.sqrt(vs[:,0]**2 + (2*F[:,0]*0.005/mn))) / F[:,0]
-
-        t[~no_Fx_neutrons] = np.maximum(t1[~no_Fx_neutrons], t2[~no_Fx_neutrons])
-
-        # For time-tracking purposes, turn off time accumulation for out-of-bounds neutrons
+        # Masks for neutrons without an Fx and one for one with an Fx (since we divide by Fx in the time calculation)
+        no_Fx = np.abs(F[:, 0]) < 1e-36
+        has_Fx = ~no_Fx
+    
+        # Essentially zero Fx
+        mask = no_Fx & in_bounds
+        t[mask] = 0.005 / vs[mask, 0]
+    
+        # Nonzero Fx
+        mask = has_Fx & in_bounds
+    
+        # Discriminant calculation
+        disc = vs[mask, 0]**2 + 2 * F[mask, 0] * 0.005 / mn 
+    
+        # Check that the discriminant is not imaginary
+        valid = disc >= 0 
+    
+        # Create arrays of the size of the mask
+        t1 = np.full(np.sum(mask), np.inf)
+        t2 = np.full(np.sum(mask), np.inf)
+    
+        # Fill in those arrays with the possible solutions
+        t1[valid] = mn * (
+            -vs[mask, 0][valid] + np.sqrt(disc[valid])
+        ) / F[mask, 0][valid]
+    
+        t2[valid] = mn * (
+            -vs[mask, 0][valid] - np.sqrt(disc[valid])
+        ) / F[mask, 0][valid]
+    
+        # Set negative times to infinity so that they are never chosen as the minimum
+        t1[t1 < 0] = np.inf
+        t2[t2 < 0] = np.inf
+    
+        t[mask] = np.minimum(t1, t2)
+    
         t[~in_bounds] = 0
 
         # Update total flight time
