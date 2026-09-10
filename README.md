@@ -68,9 +68,7 @@ For non-adiabatic calculations, each neutron carries a spin-direction unit vecto
 
 $$
 F_i = \mu_n \left(
-\hat{\sigma}_x \frac{\partial B_x}{\partial i}
-+ \hat{\sigma}_y \frac{\partial B_y}{\partial i}
-+ \hat{\sigma}_z \frac{\partial B_z}{\partial i}
+\hat{\sigma}_x \frac{\partial B_x}{\partial i} + \hat{\sigma}_y \frac{\partial B_y}{\partial i} + \hat{\sigma}_z \frac{\partial B_z}{\partial i}
 \right).
 $$
 
@@ -81,8 +79,7 @@ Random spin directions are sampled uniformly on the unit sphere.
 The field grid is divided into discrete slices along `x`. For each neutron, the code solves for the time required to reach the next slice under the local SG force. The neutron position and velocity are then updated using constant-acceleration kinematics over that interval:
 
 $$
-\mathbf{r}_{n+1} = \mathbf{r}_n + \mathbf{v}_n \Delta t
-+ \frac{1}{2}\frac{\mathbf{F}}{m_n}\Delta t^2,
+\mathbf{r}_{n+1} = \mathbf{r}_n + \mathbf{v}_n \Delta t + \frac{1}{2}\frac{\mathbf{F}}{m_n}\Delta t^2,
 $$
 
 $$
@@ -115,11 +112,11 @@ $$
 | `Perp Spread Histogram.py` | Adiabatic beam-spread study. Computes the maximum displacement transverse to the beam and produces the perpendicular-displacement histogram. |
 | `z-dependence on spread.py` | Controlled 5 A study of vertical SG deflection for several initial `z` positions. |
 | `y-dependence on spread.py` | Sweeps the initial `y` position to quantify the lateral-position dependence of the vertical deflection. |
-| `Adiabaticity Tests(2).py` | Non-adiabatic spin propagation and spin-field angle tracking used to test the adiabatic approximation. |
-| `Polarization Checks(1).py` | Propagates neutrons through the modeled collimators and evaluates the surviving beam polarization as a function of Monte Carlo sample size. |
-| `Capture Flux Check(1).py` | Tracks SG-induced changes in longitudinal neutron velocity for the capture-flux upper-bound calculation. |
-| `Main(20260909-234202).py` | Development/integration driver containing the common simulation structure and diagnostic code. |
-| `NeutronClass.py` | Experimental object-oriented neutron container. The production analysis scripts currently use vectorized NumPy arrays instead. |
+| `Adiabaticity Tests.py` | Non-adiabatic spin propagation and spin-field angle tracking used to test the adiabatic approximation. |
+| `Polarization Checks.py` | Propagates neutrons through the modeled collimators and evaluates the surviving beam polarization as a function of Monte Carlo sample size. |
+| `Capture Flux Check.py` | Tracks SG-induced changes in longitudinal neutron velocity for the capture-flux upper-bound calculation. |
+| `Main.py` | Development/integration driver containing the common simulation structure and diagnostic code. Primarily used as a testing suite.|
+| `NeutronClass.py` | Experimental object-oriented neutron container. The production analysis scripts currently use vectorized NumPy arrays instead. Use of this class was scrapped after realizing that vectorized arrays were far more efficient. |
 
 The analysis files are research scripts rather than a packaged command-line application; simulation parameters are set near the top of each script.
 
@@ -153,9 +150,9 @@ Examples:
 python "Perp Spread Histogram.py"
 python "z-dependence on spread.py"
 python "y-dependence on spread.py"
-python "Adiabaticity Tests(2).py"
-python "Polarization Checks(1).py"
-python "Capture Flux Check(1).py"
+python "Adiabaticity Tests.py"
+python "Polarization Checks.py"
+python "Capture Flux Check.py"
 ```
 
 The most frequently changed controls are defined near the beginning of each analysis script, including:
