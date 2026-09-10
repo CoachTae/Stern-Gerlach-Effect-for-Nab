@@ -87,44 +87,6 @@ while True:
     # Find the slice in x corresponding to each neutron
     nearest_idxs = Support.find_nearest_points(rs, field_data)
 
-    # Check of neutrons are hitting the collimators. If they are, set them out-of-bounds.
-    median_x = np.median(rs[:,0])
-
-    # Check for collimator 2
-    y_check = np.abs(rs[:,1]) - C2w/2
-    z_check = np.abs(rs[:,2] + DV_offset) - C2h/2
-    mask = ((np.abs(median_x - C2x) < 5e-3) & 
-            (((y_check >= 0) & (y_check < 20)) | 
-             ((z_check > 0) & (z_check < 20))))
-    rs[mask] = -100 # Sets positions well out of bounds so they can be caught by future in-bounds checks
-    neutrons_lost += np.sum(mask)
-
-    # Check for entrance collimator 1
-    y_check = np.abs(rs[:,1]) - E1w/2
-    z_check = np.abs(rs[:,2] + DV_offset) - E1h/2
-    mask = ((np.abs(median_x - E1x) < 5e-3) & 
-            (((y_check >= 0) & (y_check < 20)) | 
-            ((z_check > 0) & (z_check < 20))))
-    rs[mask] = -100
-    neutrons_lost += np.sum(mask)
-
-    # Check for entrance collimator 2
-    y_check = np.abs(rs[:,1]) - E2w/2
-    z_check = np.abs(rs[:,2] + DV_offset) - E2h/2
-    mask = ((np.abs(median_x - E2x) < 5e-3) & 
-            (((y_check >= 0) & (y_check < 20)) | 
-            ((z_check > 0) & (z_check < 20))))
-    rs[mask] = -100 
-    neutrons_lost += np.sum(mask)
-
-    # Check for entrance collimator 3
-    y_check = np.abs(rs[:,1]) - E3w/2
-    z_check = np.abs(rs[:,2] + DV_offset) - E3h/2
-    mask = ((np.abs(median_x - E3x) < 5e-3) & 
-            (((y_check >= 0) & (y_check < 20)) | 
-            ((z_check > 0) & (z_check < 20))))
-    rs[mask] = -100 
-    neutrons_lost += np.sum(mask)
 
     # Find any indexing issues before next step. If there's an issue, a neutron is going out-of-bounds, so we must ignore it.
     within_x = (rs[:, 0] < 0.995) & (rs[:, 0] > -1.2) # +/- 120cm is our x limit

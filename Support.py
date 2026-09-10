@@ -8,7 +8,7 @@ mp = 1.67262192e-27
 mn = 1.6749275e-27
 muN = (e * hbar) / (2 * mp)
 mu = -1.913 * muN
-gamma = 1.83247174e8 # gyromagnetic ratio for neutron (fix this number when I can look it up)
+gamma = 1.83247174e8 # gyromagnetic ratio for neutron
 gammaHz = gamma/(2*np.pi)
 
 def random_spin_directions(n_spins):

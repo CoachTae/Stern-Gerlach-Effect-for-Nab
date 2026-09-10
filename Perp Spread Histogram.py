@@ -6,7 +6,7 @@ from Support import mn # import mass of neutron
 
 
 #------------------------CONTROLS---------------------------------------------------------------
-N = 100000 # Number of neutrons
+N = 10000 # Number of neutrons
 spin_orientation = 'random'
 gravity = False
 x0 = -1.19 # Starting x value for neutrons (m)
